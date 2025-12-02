@@ -1,3 +1,7 @@
+import json
+
+FILE_NAME = "habits.json"
+
 class Habit:
     def __init__(self, id, name, frequency=None, done=False):
         self.id = id
@@ -20,6 +24,14 @@ class Habit:
             frequency = ""
         
         return f"{prefix} {self.id} - {self.name}{frequency}"
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "frequency": self.frequency,
+            "done": self.done
+        }
 
 class HabitManager:
     def __init__(self):
@@ -48,6 +60,32 @@ class HabitManager:
     def remove_habit(self, habit_id):
         habit = self.habits.pop(habit_id, None)
         return habit
+    
+    def export_data(self):
+        data = []
+        
+        for habit in self.list_habits():
+            habit_dict = habit.to_dict()
+            data.append(habit_dict)
+        
+        return data
+    
+    def import_data(self, data):
+        self.habits = {}
+
+        max_id = 0
+        for habit_data in data:
+            habit_id = habit_data["id"]
+            name = habit_data["name"]
+            frequency = habit_data["frequency"]
+            done = habit_data["done"]
+            habit = Habit(habit_id, name, frequency, done)
+            self.habits[habit_id] = habit
+
+            if habit_id > max_id:
+                max_id = habit_id
+        
+        self.next_id = max_id + 1
 
 def cmd_add(manager, args):
     if not args:
@@ -121,11 +159,37 @@ def cmd_commands(_manager, args):
     for command in commands:
         print(command)
 
+def cmd_save(manager, args):
+    if args:
+        print("Args are not needed")
+        return
+    
+    data = manager.export_data()
+    with open(FILE_NAME, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+    print("Habits saved")
+
+def cmd_load(manager, args):
+    if args:
+        print("Args are not needed")
+        return
+    
+    try:
+        with open(FILE_NAME, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        manager.import_data(data)
+        print("Habits loaded")
+    except FileNotFoundError:
+        print("No saved habits found")
+
 commands = {
     "add": cmd_add,
     "list": cmd_list,
     "done": cmd_done,
     "remove": cmd_remove,
+    "save": cmd_save,
+    "load": cmd_load,
     "commands": cmd_commands,
     "help": cmd_commands,
 }
